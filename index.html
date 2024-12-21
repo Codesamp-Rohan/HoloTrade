@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="./style.css">
+  <style>
+   
+  </style>
+  <script type='module' src='./app.js'></script>
+</head>
+<body>
+  <div id="bar"><pear-ctrl></pear-ctrl></div>
+  <div class="name-menu">
+    <form class="userCreateForm" action="" method="get">
+      <input type="text" name="userName" id="userName-create" placeholder="Enter the Name*">
+      <button type="button" id="userName-create-btn">Create</button>
+      <div style="font-size: 10px; color: #777; margin-left: 6px;">Already registered the name? <button class="join-toggle-btn link--btn">Join</button></div>
+    </form>
+    <form class="userJoinForm hidden" action="" method="get">
+      <input type="text" name="userName" id="userName-join" placeholder="Enter the Name*">
+      <button type="button" id="userName-join-btn">Join</button>
+      <div style="font-size: 10px; color: #777;margin-left: 6px;">Have not registered the name yet? <button class="create-toggle-btn link--btn">Create</button></div>
+    </form>
+  </div>
+  <div id="menu" class="hidden">
+    <h2 style="color: #ddd;">Welcome to HoloTrade!</h2>
+    <div style="display: flex; gap: 10px;">
+    <button id="create-marketplace">Create a Marketplace</button>
+    <button id="join-marketplace">Join a Marketplace</button>
+    </div>
+  </div>
+  
+  <div id="join-section" class="hidden">
+    <button id="join-section-closeBtn">Close</button>
+    <h3>Join a Marketplace</h3>
+    <div style="display: flex; justify-content: space-between; gap: 10px;">
+    <input type="text" id="join-topic" class="width: 100%;" placeholder="Enter Topic" />
+    <button id="join-btn">Join</button>
+    </div>
+  </div>
+  
+  <div id="loading" class="hidden">
+    <h3>Loading...</h3>
+  </div>
+
+  <div id="room" class="hidden">
+    <!-- Add Product Form -->
+     <div class="add-product-form-container hidden">
+      <button class="add-product-form-closeBtn">close</button>
+      <form id="add-product-form" action="" method="get">
+        <input type="text" id="product-name-input" placeholder="Enter product name*">
+        <input type="number" id="product-price-input" placeholder="Enter product price*">
+        <input type="text" id="product-description-input" placeholder="Enter product description*">
+        <button id="add-product-form-btn">Add Product</button>
+      </form>
+     </div>
+    <!-- Navbar!!! -->
+    <div style="display: flex; flex-direction: column;">
+      <div style="font-size: 12px; display: flex; align-items: center; color: #777;">
+        <p>Room Topic :&nbsp;</p>
+        <p id="room-topic"></p>
+      </div>
+      <div style="font-size: 12px; display: flex; align-items: center; color: #777;">
+        <p>Created By :&nbsp;</p>
+        <p id="room-creator"></p>
+      </div>
+    </div>
+    <button class="add-product-btn">Add Product</button>
+    <!-- Product List -->
+     <div>
+      
+     </div>
+  </div>
+  
+</body>
+<script>
+{
+const joinMarketPopUpBtn = document.querySelector('#join-marketplace');
+const joinMarketPopUp = document.querySelector('#join-section');
+const joinCloseBtn = document.querySelector('#join-section-closeBtn');
+
+joinMarketPopUpBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    joinMarketPopUp.classList.remove('hidden');
+})
+joinCloseBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    joinMarketPopUp.classList.add('hidden');    
+})
+  }
+{
+const userCreateForm = document.querySelector('.userCreateForm');
+const userJoinForm = document.querySelector('.userJoinForm');
+const joinToggleBtn = document.querySelector('.join-toggle-btn');
+const createToggleBtn = document.querySelector('.create-toggle-btn');
+
+joinToggleBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  userCreateForm.classList.add('hidden');
+  userJoinForm.classList.remove('hidden');
+})
+createToggleBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  userCreateForm.classList.remove('hidden');
+  userJoinForm.classList.add('hidden');
+})
+}
+{
+const addProductBtn = document.querySelector('.add-product-btn');
+const addProductForm = document.querySelector('.add-product-form-container');
+const addProductFormCloseBtn = document.querySelector('.add-product-form-closeBtn');
+
+addProductBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  addProductForm.classList.remove('hidden');
+})
+addProductFormCloseBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  addProductForm.classList.add('hidden');
+})
+}
+</script>
+</html>
