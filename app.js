@@ -4,7 +4,7 @@ import crypto from 'hypercore-crypto';
 import Autopass from 'autopass';
 import Corestore from 'corestore';
 import b4a from 'b4a';
-import { checkAdmin, deleteProduct, generateProductList, generateUID } from './other';
+import { checkAdmin, deleteProduct, editProduct, generateProductList, generateUID } from './other';
 import Hyperswarm from 'hyperswarm';
 
 export const marketDir = Pear.config.storage + "./market";
@@ -23,14 +23,13 @@ const swarm = new Hyperswarm();
 swarm.on('connection', async (connection, info) => {
     console.log('New peer connected:', info.peer);
     
-    // Listen for incoming data
     connection.on('data', async (data) => {
+        userStore.replicate(data);
+        marketStore.replicate(data);
         try {
-            const message = JSON.parse(data.toString());
+            const message = JSON.parse(data);
             console.log('Received message:', message);
-
             if (message.type === 'market-data') {
-                // Save received market data
                 await marketStore.add(message.topic, JSON.stringify(message.marketDetails));
                 console.log('Marketplace data synced:', message.topic);
             }
@@ -39,7 +38,6 @@ swarm.on('connection', async (connection, info) => {
         }
     });
 
-    // Send market data if admin
     if (isAdmin) {
         const marketData = await marketStore.get(roomTopic);
         const marketDetails = JSON.parse(marketData);
@@ -83,8 +81,8 @@ async function createMarket(userName) {
         document.querySelector('.add-product-btn').classList.remove('hidden');
         console.log(`Marketplace created and stored with topic: ${topicHex}`);
         const market = await marketStore.get(topicHex);
-        displayMarket(topicHex, userName, JSON.parse(market));
         joinSwarm(topicHex);
+        displayMarket(topicHex, userName, JSON.parse(market));
     } catch (error) {
         console.error("Error creating marketplace:", error);
     }
@@ -101,8 +99,8 @@ async function joinMarket(userName, topicHex) {
 
         console.log('Marketplace data found:', JSON.parse(market));
         console.log(`Successfully joined market: ${topicHex}`);
-        displayMarket(topicHex, userName, JSON.parse(market));
         joinSwarm(topicHex);
+        displayMarket(topicHex, userName, JSON.parse(market));
     } catch (error) {
         console.error("Error joining marketplace:", error);
     }
@@ -158,8 +156,8 @@ document.querySelector('#userName-create-btn').addEventListener('click', async (
         document.querySelector('.name-menu').classList.add('hidden');
         document.querySelector('#menu').classList.remove('hidden');
     } catch (error) {
-        console.error("Error saving username:", error);
-        alert("Failed to create username. Try again.");
+        // console.error("Error saving username:", error);
+        // alert("Failed to create username. Try again.");
     }
 });
 
