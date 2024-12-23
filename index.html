@@ -45,8 +45,11 @@
   <div id="room" class="hidden">
     <!-- Add Product Form -->
      <div class="add-product-form-container hidden">
-      <button class="add-product-form-closeBtn">close</button>
-      <form id="add-product-form" action="" method="get">
+       <form id="add-product-form" action="" method="get">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <p>Add Product...</p>
+          <button class="add-product-form-closeBtn">close</button>
+        </div>
         <input type="text" id="product-name-input" placeholder="Enter product name*">
         <input type="number" id="product-price-input" placeholder="Enter product price*">
         <input type="text" id="product-description-input" placeholder="Enter product description*">
@@ -66,8 +69,7 @@
     </div>
     <button class="add-product-btn">Add Product</button>
     <!-- Product List -->
-     <div>
-      
+     <div class="productList--area">
      </div>
   </div>
   

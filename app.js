@@ -4,22 +4,72 @@ import crypto from 'hypercore-crypto';
 import Autopass from 'autopass';
 import Corestore from 'corestore';
 import b4a from 'b4a';
-import { checkAdmin, generateUID } from './other';
+import { checkAdmin, deleteProduct, generateProductList, generateUID } from './other';
+import Hyperswarm from 'hyperswarm';
 
 export const marketDir = Pear.config.storage + "./market";
 export const userDir = Pear.config.storage + "./user";
 
 let userName;
 let userId;
+let isAdmin;
+let roomTopic;
 
 export const userStore = new Autopass(new Corestore(userDir));
 export const marketStore = new Autopass(new Corestore(marketDir));
 
+const swarm = new Hyperswarm();
+
+swarm.on('connection', async (connection, info) => {
+    console.log('New peer connected:', info.peer);
+    
+    // Listen for incoming data
+    connection.on('data', async (data) => {
+        try {
+            const message = JSON.parse(data.toString());
+            console.log('Received message:', message);
+
+            if (message.type === 'market-data') {
+                // Save received market data
+                await marketStore.add(message.topic, JSON.stringify(message.marketDetails));
+                console.log('Marketplace data synced:', message.topic);
+            }
+        } catch (err) {
+            console.error('Failed to process incoming data:', err);
+        }
+    });
+
+    // Send market data if admin
+    if (isAdmin) {
+        const marketData = await marketStore.get(roomTopic);
+        const marketDetails = JSON.parse(marketData);
+        connection.write(b4a.from(JSON.stringify({
+            type: 'market-data',
+            topic: roomTopic,
+            marketDetails,
+        })));
+        console.log('Shared market data:', roomTopic);
+    }
+
+    connection.on('close', () => {
+        console.log('Connection closed with peer:', info.peer);
+    });
+});
+
+function joinSwarm(topic) {
+    swarm.join(b4a.from(topic, 'hex'), { lookup: true, announce: true });
+    console.log(`Joined swarm with topic: ${topic}`);
+}
+
 Pear.teardown(() => {
     userStore.close();
     marketStore.close();
+    swarm.destroy();
+    console.log('Cleaned up resources.');
 });
+
 Pear.updates(() => Pear.reload());
+
 
 async function createMarket(userName) {
     const topicBuffer = crypto.randomBytes(32);
@@ -30,8 +80,11 @@ async function createMarket(userName) {
             createdBy: userName,
             createdAt: new Date().toISOString(),
         }));
+        document.querySelector('.add-product-btn').classList.remove('hidden');
         console.log(`Marketplace created and stored with topic: ${topicHex}`);
-        displayMarket(topicHex, userName);
+        const market = await marketStore.get(topicHex);
+        displayMarket(topicHex, userName, JSON.parse(market));
+        joinSwarm(topicHex);
     } catch (error) {
         console.error("Error creating marketplace:", error);
     }
@@ -41,25 +94,21 @@ async function joinMarket(userName, topicHex) {
     try {
         const market = await marketStore.get(topicHex);
         if (!market) {
-            console.error("Marketplace not found!");
-            alert("Marketplace not found. Please check the topic.");
+            console.error("Marketplace not found locally!");
+            alert("Marketplace not found. Wait for sync or check topic.");
             return;
         }
-        console.log(JSON.parse(market));
-        const isAdmin = await checkAdmin(userName, topicHex);
-        if(isAdmin){
-            document.querySelector('.add-product-btn').classList.remove('hidden');
-        } else {
-            document.querySelector('.add-product-btn').classList.add('hidden');
-        }
+
+        console.log('Marketplace data found:', JSON.parse(market));
         console.log(`Successfully joined market: ${topicHex}`);
         displayMarket(topicHex, userName, JSON.parse(market));
+        joinSwarm(topicHex);
     } catch (error) {
         console.error("Error joining marketplace:", error);
     }
 }
 
-function displayMarket(topicHex, userName, marketDetails = null) {
+async function displayMarket(topicHex, userName, marketDetails = null) {
     document.querySelector('#menu').classList.add('hidden');
     document.querySelector("#loading").classList.remove('hidden');
     document.querySelector('#join-section').classList.add('hidden');
@@ -70,8 +119,20 @@ function displayMarket(topicHex, userName, marketDetails = null) {
     document.querySelector('#loading').classList.add('hidden');
     document.querySelector('#room').classList.remove('hidden');
     document.querySelector('#room-topic').innerText = topicHex;
+    roomTopic = topicHex;
     document.querySelector('#room-creator').innerText = marketDetails.createdBy;
+    const productListContainer = document.querySelector('.productList--area');
+    productListContainer.innerHTML = '';
+
+    isAdmin = await checkAdmin(userName, topicHex);
+    if(isAdmin){
+        document.querySelector('.add-product-btn').classList.remove('hidden');
+    } else {
+        document.querySelector('.add-product-btn').classList.add('hidden');
+    }
+    reloadProductList(marketDetails, isAdmin);
 }
+
 
 async function checkUser(name) {
     try {
@@ -108,13 +169,15 @@ document.querySelector('#userName-join-btn').addEventListener('click', async (e)
     userName = document.querySelector('#userName-join').value.trim();
     const isUser = await checkUser(userName);
     if (isUser) {
-        notification('User Name found', 'success');
-        const userDetail = await userStore.get(userName);
-        console.log(JSON.parse(userDetail));
-        document.querySelector('.name-menu').classList.add('hidden');
-        document.querySelector('#menu').classList.remove('hidden');
-    } else {
-        notification('Such username does not exist!!!', 'alert');
+        notification(`${userName} found`, 'success');
+        try {
+            const userDetail = await userStore.get(userName);
+            console.log(JSON.parse(userDetail));
+            document.querySelector('.name-menu').classList.add('hidden');
+            document.querySelector('#menu').classList.remove('hidden');
+        } catch (error) {
+            notification(`${userName} not found ⚠️`, 'error');
+        }
     }
 });
 
@@ -178,6 +241,7 @@ document.querySelector('#add-product-form-btn').addEventListener('click', async 
             marketDetails.products = [];
         }        
         const newProduct = {
+            pid: generateUID(),
             name: productName,
             price: productPrice,
             description: productDesc,
@@ -191,9 +255,37 @@ document.querySelector('#add-product-form-btn').addEventListener('click', async 
         document.querySelector('#product-name-input').value = '';
         document.querySelector('#product-price-input').value = '';
         document.querySelector('#product-description-input').value = '';
-
         console.log('Updated Marketplace Details:', marketDetails);
+        reloadProductList(marketDetails, isAdmin);
     } catch (error) {
         console.error('Adding product error : ', error);   
     }
 });
+
+function reloadProductList(marketDetails, isAdmin) {
+    const productListContainer = document.querySelector('.productList--area');
+    productListContainer.innerHTML = generateProductList(marketDetails.products, isAdmin);
+
+    if (isAdmin && marketDetails.products && marketDetails.products.length > 0) {
+        const editButtons = productListContainer.querySelectorAll('.edit-btn');
+        const deleteButtons = productListContainer.querySelectorAll('.delete-btn');
+        editButtons.forEach((button, index) => {
+            button.addEventListener('click', () => editProduct(marketDetails.products[index]));
+        });
+        deleteButtons.forEach((button, index) => {
+            button.addEventListener('click', async () => {
+                try {
+                    const updatedMarketDetails = await deleteProduct(
+                        marketDetails.products[index], 
+                        marketDetails, 
+                        isAdmin
+                    );
+                    reloadProductList(updatedMarketDetails, isAdmin);
+                } catch (error) {
+                    notification("Failed to delete the product.", "alert");
+                }
+            });
+        });
+        
+    }
+}
